@@ -4,23 +4,23 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.utils import get_random_id
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
+from threading import *
 import datetime
-
-vk_session = vk_api.VkApi(token="8a1a10d828bc9726cd6fd6637f3e6142f57fc8af82cdf86f8dd35030606f53a46821de932314f01c10256")
 
 
 def reload():
-    global sklads_data, users_data
-    with open("sklads.json", encoding="utf-8") as json_file:  # Подгрузка данных о складах
-        sklads_data = json.load(json_file)
-        json_file.close()
-
-    with open("users.json", encoding="utf-8") as json_file:  # Подгрузка данных о юзерах
-        users_data = json.load(json_file)
+    global config
+    with open(CONFIG_PATH, encoding="utf-8") as json_file:  # Подгрузка данных
+        config = json.load(json_file)
         json_file.close()
 
 
-longpoll = VkBotLongPoll(vk_session, 203228178)  # инициализация бота
+VK_BOT_TOKEN = "8a1a10d828bc9726cd6fd6637f3e6142f57fc8af82cdf86f8dd35030606f53a46821de932314f01c10256"
+CONFIG_PATH = "config.json"
+VK_GROUP_ID = 203228178
+
+vk_session = vk_api.VkApi(token=VK_BOT_TOKEN)
+longpoll = VkBotLongPoll(vk_session, VK_GROUP_ID)  # инициализация бота
 vk = vk_session.get_api()
 Lslongpoll = VkLongPoll(vk_session)
 Lsvk = vk_session.get_api()
@@ -30,7 +30,7 @@ for event in Lslongpoll.listen():
     if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
         vk_id = str(event.user_id)
         if user_status_get(vk_id) == -1:
-            if vk_id in users_data.keys():
+            if check_user(vk_id):
                 user_data_write(vk_id, {"status": 1})
             else:
                 Lsvk.messages.send(
@@ -52,13 +52,14 @@ for event in Lslongpoll.listen():
                     random_id=get_random_id())
                 user_data_write(vk_id, {"status": 2, "action": "otpus"})
             else:
-                message_data = [i for i in users_data[vk_id].values()]
+
+                message_data = f'Вот ваше меню, {get_user_info(vk_id)["name"]}'
                 keyboard = VkKeyboard(one_time=True)
                 keyboard.add_button("Принять ТС", color=VkKeyboardColor.POSITIVE)
                 keyboard.add_button("Отпустить ТС", color=VkKeyboardColor.POSITIVE)
                 Lsvk.messages.send(
                     user_id=event.user_id,
-                    message=" ".join(message_data),
+                    message=message_data,
                     random_id=get_random_id(),
                     keyboard=keyboard.get_keyboard())
         elif user_status_get(vk_id)["status"] == 2:
@@ -80,7 +81,7 @@ for event in Lslongpoll.listen():
                     message="Введите номер ТС",
                     random_id=get_random_id())
             else:
-                user_data_write(vk_id, {**user_status_get(vk_id), "TS": event.text, "status": 2})
+                user_data_write(vk_id, {**user_status_get(vk_id), "tsNumber": event.text, "status": 2})
                 keyboard = VkKeyboard(one_time=True)
                 keyboard.add_button("Да", color=VkKeyboardColor.POSITIVE)
                 keyboard.add_button("Нет", color=VkKeyboardColor.NEGATIVE)
@@ -115,8 +116,10 @@ for event in Lslongpoll.listen():
                     message=f"Обработка...",
                     random_id=get_random_id(),
                     keyboard=keyboard.get_keyboard())
-                excel_write({**user_status_get(vk_id), "time": str(datetime.datetime.now()),
-                             "sklad": users_data[vk_id]["sklad"]})
+                thread = Thread(target=excel_write,
+                                args=({**user_status_get(vk_id), "operDateTime": str(datetime.datetime.now()),
+                                       "sklad": get_sklad(vk_id), "client": get_client(vk_id)},))
+                thread.start()
                 print(data)
                 user_data_write(vk_id, {"status": 1})
                 keyboard = VkKeyboard()
@@ -174,7 +177,7 @@ for event in Lslongpoll.listen():
                         user_data_write(vk_id, datas)
                     else:
                         user_data_write(vk_id, {**user_status_get(vk_id), "status": 5, "url": [event.text]})
-                        Lsvk.messages.send(
+                    Lsvk.messages.send(
                             user_id=event.user_id,
                             message=f"Введите количество",
                             random_id=get_random_id())
@@ -189,7 +192,12 @@ for event in Lslongpoll.listen():
                     keyboard=keyboard.get_keyboard())
         elif user_status_get(vk_id)['status'] == 5:
             if event.text.isdigit():
-                user_data_write(vk_id, {**user_status_get(vk_id), "status": 3, 'number': event.text})
+                data = user_status_get(vk_id)
+                if 'number' in data:
+                    numbers = data['number'] + [event.text]
+                else:
+                    numbers = [event.text]
+                user_data_write(vk_id, {**user_status_get(vk_id), "status": 3, 'number': numbers})
                 keyboard = VkKeyboard()
                 keyboard.add_button("Продолжить", color=VkKeyboardColor.POSITIVE)
                 Lsvk.messages.send(
@@ -200,5 +208,5 @@ for event in Lslongpoll.listen():
             else:
                 Lsvk.messages.send(
                     user_id=event.user_id,
-                    message=f"Введите число",
+                    message=f"Введите количество",
                     random_id=get_random_id())

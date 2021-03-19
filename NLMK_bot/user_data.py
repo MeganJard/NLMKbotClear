@@ -2,18 +2,44 @@ import json
 import re
 import pandas as pd
 import yadisk
-from syncer import sync
+import requests
+from authlib.integrations.requests_client import OAuth2Session
 
 BUFFER_EXCEL_PATH = 'C:/Users/byari.GEKTOR-PC/OneDrive/NLMK_data/BUFFER.xlsx'
 
 
-with open("sklads.json", encoding="utf-8") as json_file:  # Подгрузка данных о складах
-    sklads_data = json.load(json_file)
-    json_file.close()
+def get_user_info(user_id):
+    for i in config:
+        for j in config[i]['sklads']['sklads_dict'].keys():
+            for k in config[i]['sklads']['sklads_dict'][j]['users'].keys():
+                if k == user_id:
+                    return config[i]['sklads']['sklads_dict'][j]['users'][k]
 
-with open("users.json", encoding="utf-8") as json_file:  # Подгрузка данных о юзерах
-    users_data = json.load(json_file)
-    json_file.close()
+
+def check_user(user_id):
+    for i in config:
+        for j in config[i]['sklads']['sklads_dict'].keys():
+            for k in config[i]['sklads']['sklads_dict'][j]['users'].keys():
+                if k == user_id:
+                    return True
+    return False
+
+
+def get_sklad(user_id):
+    for i in config:
+        for j in config[i]['sklads']['sklads_dict'].keys():
+            for k in config[i]['sklads']['sklads_dict'][j]['users'].keys():
+                if k == user_id:
+                    return j
+
+
+def get_client(user_id):
+    for i in config:
+        for j in config[i]['sklads']['sklads_dict'].keys():
+            for k in config[i]['sklads']['sklads_dict'][j]['users'].keys():
+                if k == user_id:
+                    return i
+
 
 def user_status_get(user_id):
     with open('users_data.json') as json_path:
@@ -48,21 +74,61 @@ def url_valid(url):
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
     return re.match(regex, url)
 
-@sync
-async def excel_write(data):
-    y = yadisk.YaDisk(token="AgAAAAAqfZcQAAb5jHPPtbkCwkkDjCsGM6Dc4so")
-    name = 'prin' if data['action'] == 'prinat' else 'otpu'
-    y.download(f"/{data['sklad']}/{name}.xlsx", BUFFER_EXCEL_PATH)
+
+def excel_write(data):
+    y = yadisk.YaDisk(token=str(config[data['client']]['sklads']['ya_disk_token']))
+    name = 'prin' if data['action'] == 'prinat' else 'otpus'
+    download_path = config[data['client']]['sklads']['sklads_dict'][data['sklad']]['ya_disk_config'][
+        'otpusk_path' if name == 'otpus' else 'prihod_path']
+    print(download_path)
+    y.download(download_path, BUFFER_EXCEL_PATH)
     book = pd.ExcelFile(BUFFER_EXCEL_PATH).parse('Sheet1')
 
-    for i in data['url']:
-        if 'number' in data.keys():
-            book = book.append(pd.DataFrame([[data['sklad'], data['TS'], i, data['time'], data['number']]]))
-        else:
-            book = book.append(pd.DataFrame([[data['sklad'], data['TS'], i, data['time']]]))
+    client_id = config[data['client']]['nlmk_connect']['client_id']
+    client_secret = config[data['client']]['nlmk_connect']['client_secret']
+    Username = config[data['client']]['nlmk_connect']['Username']
+    password = config[data['client']]['nlmk_connect']['password']
+    print(client_id, client_secret, Username, password)
+    client = OAuth2Session(client_id, client_secret)
+    token = client.fetch_token("https://nlmk.shop/authorizationserver/oauth/token", username=Username,
+                               password=password)
+    answ = json.loads(str(requests.get(f'https://connect.nlmk.shop/api/v1/certificates/product/15j0Gg5fq6NZjg5',
+                                       headers={"Authorization": f'Bearer {token["access_token"]}'}).text))[0]
 
+    cleaned_answ = {}
+    for i in answ.keys():
+        if i == 'additional':
+            for j in answ['additional']:
+                cleaned_answ[j] = answ['additional'][j]
+        else:
+            cleaned_answ[i] = answ[i]
+
+    args_for_nlmk_api = config[data['client']]['sklads']['sklads_dict'][data['sklad']]['excel_config'][1]
+    args_for_nlmk_api = args_for_nlmk_api if name == 'prin' else args_for_nlmk_api + ['number']
+    print('data - ', data, 'nlmk_args - ', args_for_nlmk_api, 'nlmk_answ - ', cleaned_answ)
+    for i in args_for_nlmk_api:
+        if i in cleaned_answ:
+            data[i] = cleaned_answ[i]
+
+    for i in range(len(data['url'])):
+        line = []
+        for j in args_for_nlmk_api:
+            if j == 'Qrref':
+                line.append(data['url'][i])
+            elif j == 'number':
+                line.append(data['number'][i])
+            elif j == 'code_cert':
+                line.append(f'https://doc.nlmk.shop/api/v1/views/certificates/{data["code_cert"]}/scans')
+            else:
+                line.append(data[j])
+        book = book.append(pd.DataFrame([line], columns=args_for_nlmk_api))
     book.to_excel(BUFFER_EXCEL_PATH, index=False)
 
-    y.upload(BUFFER_EXCEL_PATH, f"/{data['sklad']}/{name}.xlsx", overwrite=True)
+    y.upload(BUFFER_EXCEL_PATH, download_path, overwrite=True)
+    print('ended')
 
 
+with open("config.json", encoding="utf-8") as json_file:  # Подгрузка данных о складах
+    global config
+    config = json.load(json_file)
+    json_file.close()

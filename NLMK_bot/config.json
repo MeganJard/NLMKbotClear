@@ -1,0 +1,73 @@
+{
+  "1000002844": {
+    "Client_name": "ЗАО ТФД БРОК-ИНВЕСТ-СЕРВИС И К",
+    "nlmk_connect": {
+      "client_id": "Brok_1000002844",
+      "client_secret": "HybApi#1vH!76",
+      "Username": "bogdanov_of@hotmail.com",
+      "password": "D2*IYgQIWx"
+    },
+    "sklads": {
+      "ya_disk_token": "AgAAAAAqfZcQAAb5jHPPtbkCwkkDjCsGM6Dc4so",
+      "sklads_dict": {
+        "16": {
+          "name": "Склад Липецк",
+          "adress": "Г. Липецк, ул. Космонавтов 32",
+          "ya_disk_config": {
+            "otpusk_path": "/sklad_16/otpustit.xlsx",
+            "prihod_path": "/sklad_16/prinat.xlsx"
+          },
+          "excel_config": [
+            {
+              "operDateTime": "Дата и время операции",
+              "tsNumber": "номер ТС",
+              "Qrref": "QR еп",
+              "vbeln_va": "Заказ",
+              "cert_date": "дата сертифката",
+              "cert_nr": "номер сертифката",
+              "cert_pos": "номер позиции сертифката",
+              "code_cert": "ссылка на скачивание сертифката",
+              "napr": "вид продукции",
+              "matnr": "озм",
+              "ntgew": "вес, нетто",
+              "brgew": "вес, брутто",
+              "gostp": "Гост на продукцию",
+              "ATTR_186": "Гост на марку",
+              "mark": "марка",
+              "tl": "толщина",
+              "sh": "ширина",
+              "dl": "длина"
+            },
+            [
+              "operDateTime",
+              "tsNumber",
+              "Qrref",
+              "vbeln_va",
+              "cert_date",
+              "cert_nr",
+              "cert_pos",
+              "code_cert",
+              "napr",
+              "matnr",
+              "ntgew",
+              "brgew",
+              "gostp",
+              "ATTR_186",
+              "mark",
+              "tl",
+              "sh",
+              "dl"
+            ]
+          ],
+          "users": {
+            "272481003": {
+              "name": "Михалыч"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
