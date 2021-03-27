@@ -92,26 +92,28 @@ def excel_write(data):
     client = OAuth2Session(client_id, client_secret)
     token = client.fetch_token("https://nlmk.shop/authorizationserver/oauth/token", username=Username,
                                password=password)
-    answ = json.loads(str(requests.get(f'https://connect.nlmk.shop/api/v1/certificates/product/15j0Gg5fq6NZjg5',
-                                       headers={"Authorization": f'Bearer {token["access_token"]}'}).text))[0]
-
-    cleaned_answ = {}
-    for i in answ.keys():
-        if i == 'additional':
-            for j in answ['additional']:
-                cleaned_answ[j] = answ['additional'][j]
-        else:
-            cleaned_answ[i] = answ[i]
-
-    args_for_nlmk_api = config[data['client']]['sklads']['sklads_dict'][data['sklad']]['excel_config'][1]
-    args_for_nlmk_api = args_for_nlmk_api if name == 'prin' else args_for_nlmk_api + ['number']
-    print('data - ', data, 'nlmk_args - ', args_for_nlmk_api, 'nlmk_answ - ', cleaned_answ)
-    for i in args_for_nlmk_api:
-        if i in cleaned_answ:
-            data[i] = cleaned_answ[i]
 
     for i in range(len(data['url'])):
         line = []
+        print(data['url'][i])
+        answ = json.loads(
+            str(requests.get(f'https://connect.nlmk.shop/api/v1/certificates/product/{data["url"][i].split("=")[1]}',
+                             headers={"Authorization": f'Bearer {token["access_token"]}'}).text))[0]
+
+        cleaned_answ = {}
+        for j in answ.keys():
+            if j == 'additional':
+                for k in answ['additional']:
+                    cleaned_answ[k] = answ['additional'][k]
+            else:
+                cleaned_answ[j] = answ[j]
+
+        args_for_nlmk_api = config[data['client']]['sklads']['sklads_dict'][data['sklad']]['excel_config'][1]
+        args_for_nlmk_api = args_for_nlmk_api if name == 'prin' else args_for_nlmk_api + ['number']
+        print('data - ', data, 'nlmk_args - ', args_for_nlmk_api, 'nlmk_answ - ', cleaned_answ)
+        for j in args_for_nlmk_api:
+            if j in cleaned_answ:
+                data[j] = cleaned_answ[j]
         for j in args_for_nlmk_api:
             if j == 'Qrref':
                 line.append(data['url'][i])
