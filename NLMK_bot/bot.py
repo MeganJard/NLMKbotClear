@@ -15,9 +15,9 @@ def reload():
         json_file.close()
 
 
-VK_BOT_TOKEN = "8a1a10d828bc9726cd6fd6637f3e6142f57fc8af82cdf86f8dd35030606f53a46821de932314f01c10256"
+VK_BOT_TOKEN = ""
 CONFIG_PATH = "config.json"
-VK_GROUP_ID = 203228178
+VK_GROUP_ID = 0
 
 vk_session = vk_api.VkApi(token=VK_BOT_TOKEN)
 longpoll = VkBotLongPoll(vk_session, VK_GROUP_ID)  # инициализация бота
